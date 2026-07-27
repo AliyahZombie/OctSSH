@@ -76,6 +76,22 @@ Runs locally and controls remote machines via SSH (reads `~/.ssh/config`):
 octssh
 ```
 
+##### Remote command shell
+
+Remote commands use `sh -lc` by default. Set `OCTSSH_REMOTE_SHELL` on the
+OctSSH process to use another remote shell for synchronous, sudo, and async
+commands:
+
+```bash
+export OCTSSH_REMOTE_SHELL=bash
+octssh
+```
+
+The value may be an executable name or path, such as `bash`, `/bin/bash`, or
+`zsh`. The selected shell must exist on every target machine and support the
+`-lc` options. This setting only affects SSH client mode; HTTP Serve mode uses
+`OCTSSH_SHELL` instead.
+
 #### 2. Streamable HTTP Server Mode (Local Control)
 Install this **on the target server**. It exposes the server to LLMs via a secure HTTP interface.
 In this mode, OctSSH controls the **local machine** directly (no outbound SSH).
@@ -137,7 +153,10 @@ Add to your MCP client config:
   "mcpServers": {
     "octssh": {
       "command": "octssh",
-      "args": []
+      "args": [],
+      "env": {
+        "OCTSSH_REMOTE_SHELL": "bash"
+      }
     }
   }
 }
