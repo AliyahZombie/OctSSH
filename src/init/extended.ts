@@ -1,6 +1,6 @@
 import type { Client } from "ssh2";
 import { runCommand } from "../ssh/runCommand.js";
-import { wrapSh } from "../ssh/shell.js";
+import { wrapRemoteShell } from "../ssh/shell.js";
 
 export type ExtendedInfo = {
   os?: string;
@@ -21,14 +21,14 @@ export async function collectExtendedInfo(client: Client): Promise<ExtendedInfo>
   // OS
   const osr = await runCommand(
     client,
-    wrapSh("(test -f /etc/os-release && . /etc/os-release && echo \"$PRETTY_NAME\") || uname -s"),
+    wrapRemoteShell("(test -f /etc/os-release && . /etc/os-release && echo \"$PRETTY_NAME\") || uname -s"),
     { maxStdoutBytes: 4096, maxStderrBytes: 4096 }
   );
   const osName = firstLine(osr.stdout);
   if (osName) info.os = osName;
 
   // Arch
-  const ar = await runCommand(client, wrapSh("uname -m"), {
+  const ar = await runCommand(client, wrapRemoteShell("uname -m"), {
     maxStdoutBytes: 1024,
     maxStderrBytes: 1024,
   });
@@ -38,7 +38,7 @@ export async function collectExtendedInfo(client: Client): Promise<ExtendedInfo>
   // CPU model + cores
   const lscpu = await runCommand(
     client,
-    wrapSh("(command -v lscpu >/dev/null 2>&1 && lscpu) || (test -f /proc/cpuinfo && cat /proc/cpuinfo) || true"),
+    wrapRemoteShell("(command -v lscpu >/dev/null 2>&1 && lscpu) || (test -f /proc/cpuinfo && cat /proc/cpuinfo) || true"),
     { maxStdoutBytes: 64 * 1024, maxStderrBytes: 4096 }
   );
   const modelLine = lscpu.stdout
@@ -49,7 +49,7 @@ export async function collectExtendedInfo(client: Client): Promise<ExtendedInfo>
   }
   const cores = await runCommand(
     client,
-    wrapSh("(command -v nproc >/dev/null 2>&1 && nproc) || (getconf _NPROCESSORS_ONLN 2>/dev/null) || true"),
+    wrapRemoteShell("(command -v nproc >/dev/null 2>&1 && nproc) || (getconf _NPROCESSORS_ONLN 2>/dev/null) || true"),
     { maxStdoutBytes: 128, maxStderrBytes: 128 }
   );
   const coresN = Number(firstLine(cores.stdout));
@@ -58,14 +58,14 @@ export async function collectExtendedInfo(client: Client): Promise<ExtendedInfo>
   // Memory
   const mem = await runCommand(
     client,
-    wrapSh("(command -v free >/dev/null 2>&1 && free -h) || (test -f /proc/meminfo && head -n 5 /proc/meminfo) || true"),
+    wrapRemoteShell("(command -v free >/dev/null 2>&1 && free -h) || (test -f /proc/meminfo && head -n 5 /proc/meminfo) || true"),
     { maxStdoutBytes: 4096, maxStderrBytes: 1024 }
   );
   const memLine = firstLine(mem.stdout);
   if (memLine) info.mem = memLine;
 
   // Disk
-  const disk = await runCommand(client, wrapSh("df -h / | tail -n 1"), {
+  const disk = await runCommand(client, wrapRemoteShell("df -h / | tail -n 1"), {
     maxStdoutBytes: 1024,
     maxStderrBytes: 1024,
   });

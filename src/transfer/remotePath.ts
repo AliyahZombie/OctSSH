@@ -1,6 +1,6 @@
 import type { Client } from "ssh2";
 import { runCommand } from "../ssh/runCommand.js";
-import { wrapSh } from "../ssh/shell.js";
+import { wrapRemoteShell } from "../ssh/shell.js";
 
 const homeCache = new WeakMap<object, string>();
 
@@ -8,7 +8,7 @@ async function getRemoteHome(client: Client) {
   const cached = homeCache.get(client as any);
   if (cached) return cached;
 
-  const res = await runCommand(client, wrapSh('printf %s "$HOME"'), {
+  const res = await runCommand(client, wrapRemoteShell('printf %s "$HOME"'), {
     maxStdoutBytes: 4096,
     maxStderrBytes: 4096,
   });

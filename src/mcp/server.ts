@@ -5,7 +5,11 @@ import { ConnectionPool } from "../ssh/connectionPool.js";
 import { connectDirect, connectWithProxyJump } from "../ssh/connect.js";
 import { planMachineConnection } from "../ssh/machine.js";
 import { runCommand } from "../ssh/runCommand.js";
-import { wrapSh, wrapSudoSh, isSudoPasswordError } from "../ssh/shell.js";
+import {
+  wrapRemoteShell,
+  wrapSudoRemoteShell,
+  isSudoPasswordError,
+} from "../ssh/shell.js";
 import { discoverHostAliases } from "../ssh/config/hosts.js";
 import { loadConfig } from "../state/config.js";
 import { getOctsshDir } from "../state/paths.js";
@@ -134,7 +138,7 @@ export function createOctsshServer() {
           try {
             await runCommand(
               lease.value.ssh.client,
-              wrapSh(
+              wrapRemoteShell(
                 [
                   `rm -rf \"$HOME/${rec.remoteDir}\" 2>/dev/null || true`,
                   `screen -S ${quoteForSh(rec.screenName)} -X quit 2>/dev/null || true`,
@@ -287,7 +291,7 @@ export function createOctsshServer() {
           });
         }
 
-        const res = await runCommand(lease.value.ssh.client, wrapSh(command));
+        const res = await runCommand(lease.value.ssh.client, wrapRemoteShell(command));
         return respond({
           ok: res.exitCode === 0,
           tool: "exec",
@@ -348,7 +352,7 @@ export function createOctsshServer() {
           });
         }
 
-        const res = await runCommand(lease.value.ssh.client, wrapSudoSh(command));
+        const res = await runCommand(lease.value.ssh.client, wrapSudoRemoteShell(command));
         const sudoHint =
           res.exitCode !== 0 && isSudoPasswordError(res.stderr)
             ? "Passwordless sudo is required. Configure sudoers to allow sudo without password for the SSH user."
@@ -773,7 +777,7 @@ export function createOctsshServer() {
       const lease = await pool.get(rec.machine);
       try {
         // Read remote meta.json (best-effort).
-        const metaCmd = wrapSh(
+        const metaCmd = wrapRemoteShell(
           `test -f \"${toHomeAbs(rec.metaPath)}\" && cat \"${toHomeAbs(rec.metaPath)}\" || true`
         );
         const metaRes = await runCommand(lease.value.ssh.client, metaCmd, {
@@ -816,14 +820,14 @@ export function createOctsshServer() {
           const n = Math.max(1, Math.min(2000, Math.floor(lines)));
           const tailStdout = await runCommand(
             lease.value.ssh.client,
-            wrapSh(
+            wrapRemoteShell(
               `tail -n ${n} \"${toHomeAbs(rec.stdoutPath)}\" 2>/dev/null || true`
             ),
             { maxStdoutBytes: 64 * 1024, maxStderrBytes: 4 * 1024 }
           );
           const tailStderr = await runCommand(
             lease.value.ssh.client,
-            wrapSh(
+            wrapRemoteShell(
               `tail -n ${n} \"${toHomeAbs(rec.stderrPath)}\" 2>/dev/null || true`
             ),
             { maxStdoutBytes: 64 * 1024, maxStderrBytes: 4 * 1024 }
@@ -877,7 +881,7 @@ export function createOctsshServer() {
         const c = Math.max(0, Math.min(50, Math.floor(contextLines ?? 2)));
 
         const grep = (file: string) =>
-          wrapSh(
+          wrapRemoteShell(
             `command -v grep >/dev/null 2>&1 && grep -n -E -m ${m} -C ${c} -e ${quoteForSh(
               pattern
             )} \"${toHomeAbs(file)}\" 2>/dev/null || true`
@@ -983,7 +987,7 @@ export function createOctsshServer() {
 
       const lease = await pool.get(rec.machine);
       try {
-        const metaCmd = wrapSh(
+        const metaCmd = wrapRemoteShell(
           `test -f "${toHomeAbs(rec.metaPath)}" && cat "${toHomeAbs(rec.metaPath)}" || true`
         );
         const metaRes = await runCommand(lease.value.ssh.client, metaCmd, {
@@ -1026,7 +1030,7 @@ export function createOctsshServer() {
         const b64 = buf.toString("base64");
         const runDir = rec.remoteDir;
 
-        const cmd = wrapSh(
+        const cmd = wrapRemoteShell(
           [
             `command -v base64 >/dev/null 2>&1 || { echo "base64 not found" >&2; exit 1; }`,
             `run=\"$HOME/${runDir}\"`,
@@ -1142,7 +1146,7 @@ export function createOctsshServer() {
           `screen -S ${quoteForSh(rec.screenName)} -X quit 2>/dev/null || true`
         );
 
-        await runCommand(lease.value.ssh.client, wrapSh(parts.join("; ")), {
+        await runCommand(lease.value.ssh.client, wrapRemoteShell(parts.join("; ")), {
           maxStdoutBytes: 8 * 1024,
           maxStderrBytes: 8 * 1024,
         });

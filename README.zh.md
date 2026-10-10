@@ -74,6 +74,20 @@ octssh init
 octssh
 ```
 
+##### 远端命令 Shell
+
+远端命令默认通过 `sh -lc` 运行。可以在 OctSSH 进程上设置
+`OCTSSH_REMOTE_SHELL`，让同步、sudo 和异步命令使用其他远端 shell：
+
+```bash
+export OCTSSH_REMOTE_SHELL=bash
+octssh
+```
+
+变量值可以是可执行文件名或路径，例如 `bash`、`/bin/bash` 或 `zsh`。
+所选 shell 必须存在于每台目标机器上，并支持 `-lc` 参数。此配置只影响
+SSH Client 模式；HTTP Serve 模式仍使用 `OCTSSH_SHELL`。
+
 #### 2. Streamable HTTP Server 模式 (本机控制)
 安装在**目标机器**上，通过 HTTP 接口控制该机器本身（无需 SSH 中转，适合反向代理或远程直连）。
 在此模式下，OctSSH 仅控制**本机**。
@@ -135,7 +149,10 @@ export OCTSSH_TOOL_PREFIX="us1_"
   "mcpServers": {
     "octssh": {
       "command": "octssh",
-      "args": []
+      "args": [],
+      "env": {
+        "OCTSSH_REMOTE_SHELL": "bash"
+      }
     }
   }
 }

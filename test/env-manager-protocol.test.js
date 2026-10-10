@@ -37,8 +37,27 @@ test('env-manager protocol returns default octssh env schema without side effect
       { name: 'OCTSSH_HOME', type: 'path', default: path.join(os.homedir(), '.octssh') },
       { name: 'OCTSSH_SSH_CONFIG', type: 'path', default: path.join(os.homedir(), '.ssh', 'config') },
       { name: 'OCTSSH_TOOL_PREFIX', type: 'string', default: '' },
+      { name: 'OCTSSH_REMOTE_SHELL', type: 'string', default: 'sh' },
     ],
   });
+});
+
+test('env-manager protocol includes the remote shell for init', () => {
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'octssh-env-protocol-init-'));
+  const octsshHome = path.join(tmp, 'octssh-home');
+
+  const result = runProtocol(['init', '--env-manager-protocol'], octsshHome);
+
+  assert.equal(result.status, 0, result.stderr);
+  assert.equal(result.stderr, '');
+  assert.equal(fs.existsSync(octsshHome), false);
+
+  const parsed = JSON.parse(result.stdout);
+  assert.deepEqual(parsed.env_vars, [
+    { name: 'OCTSSH_HOME', type: 'path', default: path.join(os.homedir(), '.octssh') },
+    { name: 'OCTSSH_SSH_CONFIG', type: 'path', default: path.join(os.homedir(), '.ssh', 'config') },
+    { name: 'OCTSSH_REMOTE_SHELL', type: 'string', default: 'sh' },
+  ]);
 });
 
 test('env-manager protocol prefers serve schema over starting the serve server', () => {

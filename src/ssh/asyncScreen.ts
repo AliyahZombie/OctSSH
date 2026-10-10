@@ -1,7 +1,7 @@
 import crypto from "node:crypto";
 import type { Client } from "ssh2";
 import { runCommand } from "./runCommand.js";
-import { quoteForSh, wrapSh } from "./shell.js";
+import { buildRemoteShellPrefix, quoteForSh, wrapRemoteShell } from "./shell.js";
 import { saveSession } from "../state/sessions.js";
 import { getOctsshDir } from "../state/paths.js";
 
@@ -31,7 +31,7 @@ function buildWrapperFile(params: { sessionId: string; sudo: boolean }) {
   // Write a real script file to avoid multi-level quote escaping.
   // The wrapper expects the user command in $1.
   const runDir = `$HOME/.octssh/runs/${params.sessionId}`;
-  const inner = params.sudo ? 'sudo -n -- sh -lc "$1"' : 'sh -lc "$1"';
+  const inner = `${buildRemoteShellPrefix(params.sudo)} "$1"`;
 
   return [
     '#!/bin/sh',
@@ -74,12 +74,12 @@ export async function startAsyncInScreen(
   const stdinLogPath = `${remoteDir}/stdin.log`;
 
   // Preflight: require screen.
-  const hasScreen = await runCommand(client, wrapSh("command -v screen >/dev/null 2>&1"));
+  const hasScreen = await runCommand(client, wrapRemoteShell("command -v screen >/dev/null 2>&1"));
   if (hasScreen.exitCode !== 0) {
     throw new Error("Remote prerequisite missing: `screen` is required on the server.");
   }
 
-  const hasMkfifo = await runCommand(client, wrapSh("command -v mkfifo >/dev/null 2>&1"));
+  const hasMkfifo = await runCommand(client, wrapRemoteShell("command -v mkfifo >/dev/null 2>&1"));
   if (hasMkfifo.exitCode !== 0) {
     throw new Error("Remote prerequisite missing: `mkfifo` is required on the server.");
   }
@@ -104,7 +104,7 @@ export async function startAsyncInScreen(
   ].join("\n");
 
   const runLauncher = async (pty: boolean) =>
-    runCommand(client, wrapSh(launcher), {
+    runCommand(client, wrapRemoteShell(launcher), {
       maxStdoutBytes: 1024,
       maxStderrBytes: 1024,
       pty,
@@ -150,7 +150,7 @@ export async function startAsyncInScreen(
 
     let diagOut = '';
     try {
-      const diag = await runCommand(client, wrapSh(diagCmd), {
+      const diag = await runCommand(client, wrapRemoteShell(diagCmd), {
         maxStdoutBytes: 32 * 1024,
         maxStderrBytes: 8 * 1024,
       });

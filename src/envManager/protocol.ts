@@ -35,6 +35,7 @@ function clientEnvVars(): EnvVarDefinition[] {
     ...commonEnvVars(),
     { name: "OCTSSH_SSH_CONFIG", type: "path", default: getDefaultSshConfigPath() },
     { name: "OCTSSH_TOOL_PREFIX", type: "string", default: "" },
+    { name: "OCTSSH_REMOTE_SHELL", type: "string", default: "sh" },
   ];
 }
 
@@ -42,6 +43,7 @@ function initEnvVars(): EnvVarDefinition[] {
   return [
     ...commonEnvVars(),
     { name: "OCTSSH_SSH_CONFIG", type: "path", default: getDefaultSshConfigPath() },
+    { name: "OCTSSH_REMOTE_SHELL", type: "string", default: "sh" },
   ];
 }
 
